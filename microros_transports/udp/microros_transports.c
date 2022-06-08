@@ -19,7 +19,7 @@ bool zephyr_transport_open(struct uxrCustomTransport * transport){
     zephyr_transport_params_t * params = (zephyr_transport_params_t*) transport->args;
 
     bool rv = false;
-    params->poll_fd.fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    params->poll_fd.fd = zsock_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (-1 != params->poll_fd.fd)
     {
@@ -31,11 +31,11 @@ bool zephyr_transport_open(struct uxrCustomTransport * transport){
         hints.ai_family = AF_INET;
         hints.ai_socktype = SOCK_DGRAM;
 
-        if (0 == getaddrinfo(params->ip, params->port, &hints, &result))
+        if (0 == zsock_getaddrinfo(params->ip, params->port, &hints, &result))
         {
             for (ptr = result; ptr != NULL; ptr = ptr->ai_next)
             {
-                if (0 == connect(params->poll_fd.fd, ptr->ai_addr, ptr->ai_addrlen))
+                if (0 == zsock_connect(params->poll_fd.fd, ptr->ai_addr, ptr->ai_addrlen))
                 {
                     params->poll_fd.events = POLLIN;
                     rv = true;
@@ -43,7 +43,7 @@ bool zephyr_transport_open(struct uxrCustomTransport * transport){
                 }
             }
         }
-        freeaddrinfo(result);
+        zsock_freeaddrinfo(result);
     }
     return rv;
 }
@@ -51,14 +51,14 @@ bool zephyr_transport_open(struct uxrCustomTransport * transport){
 bool zephyr_transport_close(struct uxrCustomTransport * transport){
     zephyr_transport_params_t * params = (zephyr_transport_params_t*) transport->args;
 
-    return (-1 == params->poll_fd.fd) ? true : (0 == close(params->poll_fd.fd));
+    return (-1 == params->poll_fd.fd) ? true : (0 == zsock_close(params->poll_fd.fd));
 }
 
 size_t zephyr_transport_write(struct uxrCustomTransport* transport, const uint8_t * buf, size_t len, uint8_t * err){
     zephyr_transport_params_t * params = (zephyr_transport_params_t*) transport->args;
 
     size_t rv = 0;
-    ssize_t bytes_sent = send(params->poll_fd.fd, (void*)buf, len, 0);
+    ssize_t bytes_sent = zsock_send(params->poll_fd.fd, (void*)buf, len, 0);
     if (-1 != bytes_sent)
     {
         rv = (size_t)bytes_sent;
@@ -75,10 +75,10 @@ size_t zephyr_transport_read(struct uxrCustomTransport* transport, uint8_t* buf,
     zephyr_transport_params_t * params = (zephyr_transport_params_t*) transport->args;
 
     size_t rv = 0;
-    int poll_rv = poll(&params->poll_fd, 1, timeout);
+    int poll_rv = zsock_poll(&params->poll_fd, 1, timeout);
     if (0 < poll_rv)
     {
-        ssize_t bytes_received = recv(params->poll_fd.fd, (void*)buf, len, 0);
+        ssize_t bytes_received = zsock_recv(params->poll_fd.fd, (void*)buf, len, 0);
         if (-1 != bytes_received)
         {
             rv = (size_t)bytes_received;
